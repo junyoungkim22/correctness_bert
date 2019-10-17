@@ -1,0 +1,8 @@
+bert/
+data/data
+data/*.tsv
+sentence_embedding.zip
+tutorial_train.py
+sentence_embedding
+saved
+dev.tsv
