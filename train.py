@@ -24,7 +24,7 @@ bert_classifier = model.classification.BERTClassifier(bert_base, num_classes=2, 
 # only need to initialize the classifier layer.
 bert_classifier.classifier.initialize(init=mx.init.Normal(0.02), ctx=ctx)
 bert_classifier.hybridize(static_alloc=True)
-bert_classifier.load_parameters("saved")
+#bert_classifier.load_parameters("saved")
 
 # softmax cross entropy loss for classification
 loss_function = mx.gluon.loss.SoftmaxCELoss()

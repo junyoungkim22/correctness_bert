@@ -1,6 +1,5 @@
 import warnings
 warnings.filterwarnings('ignore')
-
 import io
 import random
 import numpy as np
@@ -8,12 +7,14 @@ import mxnet as mx
 import gluonnlp as nlp
 import sys
 from bert import data, model
+from tqdm import tqdm
 
 np.random.seed(100)
 random.seed(100)
 mx.random.seed(10000)
 # change `ctx` to `mx.cpu()` if no GPU is available.
 ctx = mx.gpu(0)
+print("Making BERT...")
 bert_base, vocabulary = nlp.model.get_model('bert_12_768_12', 
                                             dataset_name='book_corpus_wiki_en_uncased', 
                                             pretrained=True, ctx=ctx, use_pooler=True,
@@ -44,6 +45,7 @@ num_discard_samples = 0
 field_separator = nlp.data.Splitter('\t')
 # Fields to select from the file
 field_indices = [1, 2, 0]
+print("Making raw data...")
 data_test_raw = nlp.data.TSVDataset(filename='data/test.tsv',
                                     field_separator=field_separator,
                                     num_discard_samples=num_discard_samples,
@@ -96,6 +98,7 @@ batch_size = 16
 lr = 5e-6
 
 # The FixedBucketSampler and the DataLoader for making the mini-batches
+print("Making sampler...")
 test_sampler = nlp.data.FixedBucketSampler(lengths=[int(item[1]) for item in data_test],
                                             batch_size=batch_size,
                                             shuffle=True)
@@ -112,11 +115,11 @@ grad_clip = 1
 
 # Training the model with only three epochs
 log_interval = 4
-num_epochs = 3
+num_epochs = 1
 for epoch_id in range(num_epochs):
     metric.reset()
     step_loss = 0
-    for batch_id, (token_ids, valid_length, segment_ids, label) in enumerate(bert_dataloader):
+    for batch_id, (token_ids, valid_length, segment_ids, label) in tqdm(enumerate(bert_dataloader)):
         with mx.autograd.record():
 
             # Load the data to the GPU
@@ -129,6 +132,7 @@ for epoch_id in range(num_epochs):
             out = bert_classifier(token_ids, segment_ids, valid_length.astype('float32'))
             ls = loss_function(out, label).mean()
 
+        '''
         # And backwards computation
         ls.backward()
 
@@ -138,8 +142,10 @@ for epoch_id in range(num_epochs):
         trainer.update(1)
 
         step_loss += ls.asscalar()
+        '''
         metric.update([label], [out])
 
+        '''
         # Printing vital information
         if (batch_id + 1) % (log_interval) == 0:
             print('[Epoch {} Batch {}/{}] loss={:.4f}, lr={:.7f}, acc={:.3f}'
@@ -147,5 +153,7 @@ for epoch_id in range(num_epochs):
                                  step_loss / log_interval,
                                  trainer.learning_rate, metric.get()[1]))
             step_loss = 0
-    bert_classifier.save_parameters("saved")
+        '''
+    print(metric.get()[1])
+    #bert_classifier.save_parameters("saved")
 
