@@ -1,6 +1,7 @@
 import warnings
 warnings.filterwarnings('ignore')
 import io
+import os
 import random
 import numpy as np
 import mxnet as mx
@@ -33,7 +34,7 @@ loss_function.hybridize(static_alloc=True)
 
 metric = mx.metric.Accuracy()
 
-tsv_file = io.open('data/dev.tsv', encoding='utf-8')
+tsv_file = io.open('data/test.tsv', encoding='utf-8')
 '''
 for i in range(5):
         print(tsv_file.readline())
@@ -46,7 +47,37 @@ field_separator = nlp.data.Splitter('\t')
 # Fields to select from the file
 field_indices = [1, 2, 0]
 print("Making raw data...")
-data_dev_raw = nlp.data.TSVDataset(filename='data/dev.tsv',
+'''
+data_test_raw = nlp.data.TSVDataset(filename='data/test.tsv',
+                                    field_separator=field_separator,
+                                    num_discard_samples=num_discard_samples,
+                                    field_indices=field_indices)
+'''
+sql_file_name = sys.argv[2]
+hyp_file_name = sys.argv[3]
+hyp_file = open(hyp_file_name, 'r')
+sql_file = open(sql_file_name, 'r')
+sql_list = []
+hyp_list = []
+for row in hyp_file:
+    hyp_list.append(row.rstrip())
+for row in sql_file:
+    sql_list.append(row.rstrip())
+
+data_test_raw = []
+tmp_file = open('tmp.tsv', 'w')
+for  i in range(len(hyp_list)):
+    #print(hyp_list[i])
+    tmp_file.write('0\t' + sql_list[i] + '\t' + hyp_list[i] + '\n')
+    '''
+    append_list = []
+    append_list.append(sql_list[i])
+    append_list.append(hyp_list[i])
+    append_list.append(0)  #Fake label
+    data_test_raw.append(append_list)
+    '''
+
+data_test_raw = nlp.data.TSVDataset(filename='tmp.tsv',
                                     field_separator=field_separator,
                                     num_discard_samples=num_discard_samples,
                                     field_indices=field_indices)
@@ -80,7 +111,7 @@ transform = data.transform.BERTDatasetTransform(bert_tokenizer, max_len,
                                                 has_label=True,
                                                 pad=True,
                                                 pair=pair)
-data_dev = data_dev_raw.transform(transform)
+data_test = data_test_raw.transform(transform)
 
 '''
 print('vocabulary used for tokenization = \n%s'%vocabulary)
@@ -99,10 +130,10 @@ lr = 5e-6
 
 # The FixedBucketSampler and the DataLoader for making the mini-batches
 print("Making sampler...")
-dev_sampler = nlp.data.FixedBucketSampler(lengths=[int(item[1]) for item in data_dev],
+test_sampler = nlp.data.FixedBucketSampler(lengths=[int(item[1]) for item in data_test],
                                             batch_size=batch_size,
                                             shuffle=True)
-bert_dataloader = mx.gluon.data.DataLoader(data_dev, batch_sampler=dev_sampler)
+bert_dataloader = mx.gluon.data.DataLoader(data_test, batch_sampler=test_sampler)
 
 trainer = mx.gluon.Trainer(bert_classifier.collect_params(), 'adam',
                            {'learning_rate': lr, 'epsilon': 1e-9})
@@ -116,6 +147,8 @@ grad_clip = 1
 # Training the model with only three epochs
 log_interval = 4
 num_epochs = 1
+
+result_file = open("results.txt", "w")
 for epoch_id in range(num_epochs):
     metric.reset()
     step_loss = 0
@@ -130,7 +163,16 @@ for epoch_id in range(num_epochs):
 
             # Forward computation
             out = bert_classifier(token_ids, segment_ids, valid_length.astype('float32'))
-            ls = loss_function(out, label).mean()
+            #ls = loss_function(out, label).mean()
+
+        for result in out.asnumpy():
+            pred_0 = float(result[0])
+            pred_1= float(result[1])
+            if pred_0 > pred_1:
+                result_file.write('0')
+            else:
+                result_file.write('1')
+            result_file.write('\n')
 
         '''
         # And backwards computation
@@ -154,6 +196,6 @@ for epoch_id in range(num_epochs):
                                  trainer.learning_rate, metric.get()[1]))
             step_loss = 0
         '''
-    print(metric.get()[1])
+    #print(metric.get()[1])
     #bert_classifier.save_parameters("saved")
 

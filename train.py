@@ -7,6 +7,9 @@ import numpy as np
 import mxnet as mx
 import gluonnlp as nlp
 from bert import data, model
+import sys
+
+model_name = sys.argv[1]
 
 np.random.seed(100)
 random.seed(100)
@@ -107,7 +110,8 @@ train_sampler = nlp.data.FixedBucketSampler(lengths=[int(item[1]) for item in da
                                             batch_size=batch_size,
                                             shuffle=True)
 bert_dataloader = mx.gluon.data.DataLoader(data_train, batch_sampler=train_sampler)
-
+dev_sampler = nlp.data.FixedBucketSampler(lengths=[int(item[1]) for item in data_dev], batch_size=batch_size, shuffle=True)
+bert_dev_dataloader = mx.gluon.data.DataLoader(data_dev, batch_sampler=dev_sampler)
 trainer = mx.gluon.Trainer(bert_classifier.collect_params(), 'adam',
                            {'learning_rate': lr, 'epsilon': 1e-9})
 
@@ -154,5 +158,25 @@ for epoch_id in range(num_epochs):
                                  step_loss / log_interval,
                                  trainer.learning_rate, metric.get()[1]))
             step_loss = 0
-    bert_classifier.save_parameters("saved")
+        if(batch_id == 30):
+            break
+    metric.reset()
+    '''
+    for batch_id, (token_ids, valid_length, segment_ids, label) in enumerate(bert_dev_dataloader):
+        with mx.autograd.record():
+
+            # Load the data to the GPU
+            token_ids = token_ids.as_in_context(ctx)
+            valid_length = valid_length.as_in_context(ctx)
+            segment_ids = segment_ids.as_in_context(ctx)
+            label = label.as_in_context(ctx)
+
+            # Forward computation
+            out = bert_classifier(token_ids, segment_ids, valid_length.astype('float32'))
+
+        metric.update([label], [out])
+    print("Epoch {} DEV accuracy: {}".format(epoch_id, metric.get()[1]))
+    '''
+    model_path = 'saved/' + model_name + '/epoch_' + str(epoch_id)
+    bert_classifier.save_parameters(model_path)
 

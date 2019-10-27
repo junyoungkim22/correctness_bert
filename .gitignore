@@ -1,8 +1,11 @@
 bert/
 data/*.tsv
 data/__pycache__/
+data/model_results/
 sentence_embedding.zip
 tutorial_train.py
 sentence_embedding
 saved
 dev.tsv
+results/
+tmp.tsv
