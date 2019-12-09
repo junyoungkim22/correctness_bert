@@ -148,7 +148,7 @@ grad_clip = 1
 log_interval = 4
 num_epochs = 1
 
-result_file = open("results.txt", "w")
+result_file = open("cor_results.txt", "w")
 for epoch_id in range(num_epochs):
     metric.reset()
     step_loss = 0

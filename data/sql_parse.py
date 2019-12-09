@@ -126,7 +126,6 @@ def sql_reconstruct(parse_tuple):
     return sql
 
 def get_incorrect_column(col_name, columns):
-    i = 0
     while True:
         incorrect_column = random.choice(columns)
         if incorrect_column == col_name:
@@ -134,18 +133,46 @@ def get_incorrect_column(col_name, columns):
         else:
             return incorrect_column
 
+def get_all_incorrect_columns(col_name, columns):
+    ret_list = [] 
+    for col in columns:
+        if col != col_name:
+            ret_list.append(col)
+    return ret_list
+
 def get_incorrect_sqls(sql, columns):
     agg, sel_col, conds = sql_parse(sql)
     incorrect_sqls = []
+    '''
     incorrect_sel_col = get_incorrect_column(sel_col, columns)
     incorrect_sqls.append(sql_reconstruct((agg, incorrect_sel_col, conds)))
+    '''
+    incorrect_sel_cols = get_all_incorrect_columns(sel_col, columns)
+    for col in incorrect_sel_cols:
+        incorrect_sqls.append(sql_reconstruct((agg, col, conds)))
     changed_conds = []
     for cond in conds:
-        #incorrect_cond = cond[:]
-        #incorrect_cond[0] = get_incorrect_column(incorrect_cond[0], columns)
+        '''
         incorrect_col = get_incorrect_column(cond[0], columns)
         changed_conds.append((incorrect_col, cond[1], cond[2]))
+        '''
+        incorrect_cols = get_all_incorrect_columns(cond[0], columns)
+        tmp = []
+        for col in incorrect_cols:
+            tmp.append((col, cond[1], cond[2]))
+        changed_conds.append(tmp)
     incorrect_conds_list = []
+    for i in range(len(changed_conds)):
+        for j in range(len(changed_conds[i])):
+            cond = []
+            for k in range(len(conds)):
+                if k == i:
+                    cond.append(changed_conds[i][j])
+                else:
+                    cond.append(conds[k])
+            incorrect_conds_list.append(cond)
+        
+    '''
     for i in range(len(changed_conds)):
         cond = []
         for j in range(len(conds)):
@@ -154,6 +181,7 @@ def get_incorrect_sqls(sql, columns):
             else:
                 cond.append(conds[j])
         incorrect_conds_list.append(cond)
+    '''
 
     for incorrect_conds in incorrect_conds_list:
         incorrect_sqls.append(sql_reconstruct((agg, sel_col, incorrect_conds)))

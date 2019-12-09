@@ -158,8 +158,10 @@ for epoch_id in range(num_epochs):
                                  step_loss / log_interval,
                                  trainer.learning_rate, metric.get()[1]))
             step_loss = 0
+        '''
         if(batch_id == 30):
             break
+        '''
     metric.reset()
     '''
     for batch_id, (token_ids, valid_length, segment_ids, label) in enumerate(bert_dev_dataloader):
